@@ -7,6 +7,7 @@ import { Runnable } from "@langchain/core/runnables";
 import { HumanMessage, AIMessageChunk, BaseMessage } from "@langchain/core/messages";
 import { StateGraph, MessagesAnnotation, Annotation } from "@langchain/langgraph";
 import * as rl from "readline-sync";
+import { text } from 'node:stream/consumers';
 import { GROQ_API_KEY } from "./api_keys";
 
 process.env.GROQ_API_KEY = GROQ_API_KEY
@@ -91,13 +92,59 @@ async function statementGeneratorNode(state: typeof AgentState.State) {
 	})
 }
 
+async function snowDataFetchNode(state: typeof AgentState.State) {
+	const snowURL = "https://dev288657.service-now.com/api/692302/agentic_ai/telebot";
+	let content = state.messages[state.messages.length - 1].content.toString().split(",").map((elem) => {
+		return elem.trim();
+	});
+	const response = await fetch(snowURL, {
+		method: 'POST',
+		body: JSON.stringify({
+			"keywords": content
+		}),
+		headers: { 'Content-Type': 'application/json' }
+	});
+
+	let suggestedResolves = "";
+
+	if (response.body !== null) {
+		let response_text = await text(response.body);
+		let response_obj = JSON.parse(response_text);
+		if (response_obj.result.length > 0) {
+			suggestedResolves = response_obj.result.map((elem) => {
+				return elem.res_note.toString().trim();
+			}).join(", ");
+		}
+	}
+
+	return {
+		messages: [new HumanMessage(suggestedResolves)],
+		sender: "DataProcess"
+	}
+}
+
+const snowDataProcessAgent = await createAgent({
+	llm: model,
+	systemMessage: "Evaluate the comma separated statements and provide the user a solution"
+})
+
+async function snowDataProcessNode(state: typeof AgentState.State) {
+	return runAgentNode({
+		state: state,
+		agent: snowDataProcessAgent,
+		name: "DataEvaluator"
+	})
+}
+
 // Define a new graph
 const workflow: any = new StateGraph(MessagesAnnotation)
 	.addNode("KeyGen", generateKeywordNode)
-	.addNode("STGen", statementGeneratorNode)
+	.addNode("DataProcess", snowDataFetchNode)
+	.addNode("DataEvaluate", snowDataProcessNode)
 	.addEdge("__start__", "KeyGen")
-	.addEdge("KeyGen", "STGen")
-	.addEdge("STGen", "__end__")
+	.addEdge("KeyGen", "DataProcess")
+	.addEdge("DataProcess", "DataEvaluate")
+	.addEdge("DataEvaluate", "__end__")
 
 // Finally, we compile it into a LangChain Runnable.
 const app: any = workflow.compile();
