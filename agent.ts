@@ -79,21 +79,9 @@ async function generateKeywordNode(state: typeof AgentState.State) {
 	})
 }
 
-const statementGeneratorAgent = await createAgent({
-	llm: model,
-	systemMessage: "Make sentence with each and every keyword separately and return the sentences in numbered way"
-})
-
-async function statementGeneratorNode(state: typeof AgentState.State) {
-	return runAgentNode({
-		state: state,
-		agent: statementGeneratorAgent,
-		name: "STGen"
-	})
-}
-
 async function snowDataFetchNode(state: typeof AgentState.State) {
 	const snowURL = "https://dev288657.service-now.com/api/692302/agentic_ai/telebot";
+	console.log("Generated Keywords: ", state.messages[state.messages.length - 1].content);
 	let content = state.messages[state.messages.length - 1].content.toString().split(",").map((elem) => {
 		return elem.trim();
 	});
@@ -125,7 +113,7 @@ async function snowDataFetchNode(state: typeof AgentState.State) {
 
 const snowDataProcessAgent = await createAgent({
 	llm: model,
-	systemMessage: "Evaluate the comma separated statements and provide the user a solution"
+	systemMessage: "Analyze the comma separated statements and tell the user a probable solution relevant to the problem to fix the issue"
 })
 
 async function snowDataProcessNode(state: typeof AgentState.State) {
@@ -149,15 +137,24 @@ const workflow: any = new StateGraph(MessagesAnnotation)
 // Finally, we compile it into a LangChain Runnable.
 const app: any = workflow.compile();
 
-while (true) {
-	let ans = rl.question("User: ");
+// while (true) {
+// 	let ans = rl.question("User: ");
+//
+// 	if (ans === "exit" || ans === "quit" || ans === "q") {
+// 		break;
+// 	} else {
+// 		const finalState: any = await app.invoke({
+// 			messages: [new HumanMessage(ans)],
+// 		});
+// 		console.log("Agent: ", finalState.messages[finalState.messages.length - 1].content);
+// 	}
+// }
 
-	if (ans === "exit" || ans === "quit" || ans === "q") {
-		break;
-	} else {
-		const finalState: any = await app.invoke({
-			messages: [new HumanMessage(ans)],
-		});
-		console.log("Agent: ", finalState.messages[finalState.messages.length - 1].content);
-	}
+async function callLLM(msg: string): Promise<string> {
+	const finalState: any = await app.invoke({
+		messages: [new HumanMessage(msg)],
+	});
+	return finalState.messages[finalState.messages.length - 1].content;
 }
+
+export { callLLM }

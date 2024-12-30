@@ -14,6 +14,10 @@
     "@langchain/core": "^0.3.26",
     "@langchain/groq": "^0.1.2",
     "@langchain/langgraph": "^0.2.36",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.10.2",
+    "axios": "^1.7.9",
+    "express": "^4.21.2",
     "readline": "^1.3.0",
     "readline-sync": "^1.4.10",
     "tsx": "^4.19.2"
