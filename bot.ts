@@ -1,9 +1,7 @@
 import express from "express";
 import { handler } from "./handler"
-import { TELEGRAM_API_KEY } from "./api_keys";
 
 const PORT = process.env.PORT || 4040;
-const BASE_URL = `https://api.telegram.org/bot${TELEGRAM_API_KEY}`;
 
 const app = express();
 
